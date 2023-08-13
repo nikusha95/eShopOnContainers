@@ -8,10 +8,12 @@ public class CatalogController : ControllerBase
     private readonly CatalogSettings _settings;
     private readonly ICatalogIntegrationEventService _catalogIntegrationEventService;
 
-    public CatalogController(CatalogContext context, IOptionsSnapshot<CatalogSettings> settings, ICatalogIntegrationEventService catalogIntegrationEventService)
+    public CatalogController(CatalogContext context, IOptionsSnapshot<CatalogSettings> settings,
+        ICatalogIntegrationEventService catalogIntegrationEventService)
     {
         _catalogContext = context ?? throw new ArgumentNullException(nameof(context));
-        _catalogIntegrationEventService = catalogIntegrationEventService ?? throw new ArgumentNullException(nameof(catalogIntegrationEventService));
+        _catalogIntegrationEventService = catalogIntegrationEventService ??
+                                          throw new ArgumentNullException(nameof(catalogIntegrationEventService));
         _settings = settings.Value;
 
         context.ChangeTracker.QueryTrackingBehavior = QueryTrackingBehavior.NoTracking;
@@ -23,7 +25,8 @@ public class CatalogController : ControllerBase
     [ProducesResponseType(typeof(PaginatedItemsViewModel<CatalogItem>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(IEnumerable<CatalogItem>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> ItemsAsync([FromQuery] int pageSize = 10, [FromQuery] int pageIndex = 0, string ids = null)
+    public async Task<IActionResult> ItemsAsync([FromQuery] int pageSize = 10, [FromQuery] int pageIndex = 0,
+        string ids = null)
     {
         if (!string.IsNullOrEmpty(ids))
         {
@@ -55,7 +58,7 @@ public class CatalogController : ControllerBase
 
     private async Task<List<CatalogItem>> GetItemsByIdsAsync(string ids)
     {
-        var numIds = ids.Split(',').Select(id => (Ok: int.TryParse(id, out int x), Value: x));
+        var numIds = ids.Split(',').Select(id => (Ok: int.TryParse(id, out int x), Value: x)).ToList();
 
         if (!numIds.All(nid => nid.Ok))
         {
@@ -101,7 +104,8 @@ public class CatalogController : ControllerBase
     // GET api/v1/[controller]/items/withname/samplename[?pageSize=3&pageIndex=10]
     [HttpGet]
     [Route("items/withname/{name:minlength(1)}")]
-    public async Task<ActionResult<PaginatedItemsViewModel<CatalogItem>>> ItemsWithNameAsync(string name, [FromQuery] int pageSize = 10, [FromQuery] int pageIndex = 0)
+    public async Task<ActionResult<PaginatedItemsViewModel<CatalogItem>>> ItemsWithNameAsync(string name,
+        [FromQuery] int pageSize = 10, [FromQuery] int pageIndex = 0)
     {
         var totalItems = await _catalogContext.CatalogItems
             .Where(c => c.Name.StartsWith(name))
@@ -121,7 +125,8 @@ public class CatalogController : ControllerBase
     // GET api/v1/[controller]/items/type/1/brand[?pageSize=3&pageIndex=10]
     [HttpGet]
     [Route("items/type/{catalogTypeId}/brand/{catalogBrandId:int?}")]
-    public async Task<ActionResult<PaginatedItemsViewModel<CatalogItem>>> ItemsByTypeIdAndBrandIdAsync(int catalogTypeId, int? catalogBrandId, [FromQuery] int pageSize = 10, [FromQuery] int pageIndex = 0)
+    public async Task<ActionResult<PaginatedItemsViewModel<CatalogItem>>> ItemsByTypeIdAndBrandIdAsync(
+        int catalogTypeId, int? catalogBrandId, [FromQuery] int pageSize = 10, [FromQuery] int pageIndex = 0)
     {
         var root = (IQueryable<CatalogItem>)_catalogContext.CatalogItems;
 
@@ -148,7 +153,8 @@ public class CatalogController : ControllerBase
     // GET api/v1/[controller]/items/type/all/brand[?pageSize=3&pageIndex=10]
     [HttpGet]
     [Route("items/type/all/brand/{catalogBrandId:int?}")]
-    public async Task<ActionResult<PaginatedItemsViewModel<CatalogItem>>> ItemsByBrandIdAsync(int? catalogBrandId, [FromQuery] int pageSize = 10, [FromQuery] int pageIndex = 0)
+    public async Task<ActionResult<PaginatedItemsViewModel<CatalogItem>>> ItemsByBrandIdAsync(int? catalogBrandId,
+        [FromQuery] int pageSize = 10, [FromQuery] int pageIndex = 0)
     {
         var root = (IQueryable<CatalogItem>)_catalogContext.CatalogItems;
 
@@ -210,7 +216,8 @@ public class CatalogController : ControllerBase
         if (raiseProductPriceChangedEvent) // Save product's data and publish integration event through the Event Bus if price has changed
         {
             //Create Integration Event to be published through the Event Bus
-            var priceChangedEvent = new ProductPriceChangedIntegrationEvent(catalogItem.Id, productToUpdate.Price, oldPrice);
+            var priceChangedEvent =
+                new ProductPriceChangedIntegrationEvent(catalogItem.Id, productToUpdate.Price, oldPrice);
 
             // Achieving atomicity between original Catalog database operation and the IntegrationEventLog thanks to a local transaction
             await _catalogIntegrationEventService.SaveEventAndCatalogContextChangesAsync(priceChangedEvent);
@@ -223,7 +230,8 @@ public class CatalogController : ControllerBase
             await _catalogContext.SaveChangesAsync();
         }
 
-        return CreatedAtAction(nameof(ItemByIdAsync), new { id = productToUpdate.Id }, null);
+        string actionName = nameof(ItemByIdAsync);
+        return CreatedAtAction(actionName, new { id = productToUpdate.Id }, null);
     }
 
     //POST api/v1/[controller]/items
@@ -245,8 +253,8 @@ public class CatalogController : ControllerBase
         _catalogContext.CatalogItems.Add(item);
 
         await _catalogContext.SaveChangesAsync();
-
-        return CreatedAtAction(nameof(ItemByIdAsync), new { id = item.Id }, null);
+        var actionName = nameof(ItemByIdAsync);
+        return CreatedAtAction(actionName, new { id = item.Id }, null);
     }
 
     //DELETE api/v1/[controller]/id
